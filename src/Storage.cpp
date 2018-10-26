@@ -1,12 +1,14 @@
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <vector>
 #include "Storage.hpp"
 #include "Path.hpp"
-#include <fstream>
-#include <string>
-#include <sstream>
-#include <vector>
+
+using namespace std;
 
 // instance of Storage
-std::shared_ptr<Storage> Storage::m_instance = nullptr;
+shared_ptr<Storage> Storage::m_instance = nullptr;
 
 /**
 *   default constructor
@@ -20,7 +22,7 @@ Storage::Storage() {
 *   remove the double quatations in the token
 *   @param tokens the source tokens
 */
-static void removeQuatation(std::vector<std::string> &tokens) {
+static void removeQuatation(vector<string> &tokens) {
     for (auto it = tokens.begin(); it != tokens.end(); it++) {
         if ((*it)[0] == '\"') {
             it->erase(it->begin());
@@ -37,10 +39,10 @@ static void removeQuatation(std::vector<std::string> &tokens) {
 *   @param t_delim the delim of the string
 *   @return a vector of string
 */
-static std::vector<std::string> split(const std::string &t_str, char t_delim) {
-    std::stringstream ss(t_str);
-    std::string item;
-    std::vector<std::string> tokens;
+static vector<string> split(const string &t_str, char t_delim) {
+    stringstream ss(t_str);
+    string item;
+    vector<string> tokens;
     while (getline(ss, item, t_delim)) {
         tokens.push_back(item);
     }
@@ -48,10 +50,10 @@ static std::vector<std::string> split(const std::string &t_str, char t_delim) {
     return tokens;
 }
 
-std::vector<std::string> stringToVector(std::string t_str) {
-    std::stringstream ss(t_str);
-    std::string item;
-    std::vector<std::string> participatorlist;
+vector<string> stringToVector(string t_str) {
+    stringstream ss(t_str);
+    string item;
+    vector<string> participatorlist;
     while (getline(ss, item, '&')) {
         participatorlist.push_back(item);
     }
@@ -63,37 +65,37 @@ std::vector<std::string> stringToVector(std::string t_str) {
 *   @return if success, true will be returned
 */
 bool Storage::readFromFile(void) {
-    std::ifstream users_ifs(Path::userPath, std::ios::in);
-    std::ifstream meetings_ifs(Path::meetingPath, std::ios::in);
+    ifstream users_ifs(Path::userPath, ios::in);
+    ifstream meetings_ifs(Path::meetingPath, ios::in);
     if (!(users_ifs.good() && meetings_ifs.good())) {
         return false;
     }
-    std::string line;
+    string line;
     // skip the first line
-    // std::getline(users_ifs, line);
-    while (std::getline(users_ifs, line)) {
+    // getline(users_ifs, line);
+    while (getline(users_ifs, line)) {
         // remove the first and last character
         if (line.length() < 1) {
             continue;
         }
-        std::string real_line(line.begin() + 1,
+        string real_line(line.begin() + 1,
                               line.begin() + line.length() - 1);
-        std::vector<std::string> data = split(real_line, ',');
+        vector<string> data = split(real_line, ',');
         if (data.size() != 4) {
             continue;
         }
         m_userList.push_back({data[0], data[1], data[2], data[3]});
     }
     users_ifs.close();
-    // std::getline(users_ifs, line);
-    while (std::getline(meetings_ifs, line)) {
+    // getline(users_ifs, line);
+    while (getline(meetings_ifs, line)) {
         // remove the first and last character
         if (line.length() < 1) {
             continue;
         }
-        std::string real_line(line.begin() + 1,
+        string real_line(line.begin() + 1,
                               line.begin() + line.length() - 1);
-        std::vector<std::string> data = split(real_line, ',');
+        vector<string> data = split(real_line, ',');
         if (data.size() != 5) {
             continue;
         }
@@ -108,10 +110,10 @@ bool Storage::readFromFile(void) {
 *   @param t_factors the string factors
 *   @return a csv string
 */
-std::string generate_csv_line(std::vector<std::string> t_factors) {
-    std::string ret;
+string generate_csv_line(vector<string> t_factors) {
+    string ret;
     bool first = true;
-    for (std::string &each : t_factors) {
+    for (string &each : t_factors) {
         if (!first) {
             ret += ",";
         }
@@ -128,8 +130,8 @@ std::string generate_csv_line(std::vector<std::string> t_factors) {
 * @param the source participatorlist
 * @return the result string
 */
-std::string vectorToString(std::vector<std::string> &participatorlist) {
-    std::string result = "";
+string vectorToString(vector<string> &participatorlist) {
+    string result = "";
     bool isFirstItem = true;
     for (auto it = participatorlist.begin(); it != participatorlist.end();
          it++) {
@@ -151,12 +153,12 @@ bool Storage::writeToFile(void) {
     if (!m_dirty) {
         return false;
     }
-    std::ofstream users_ifs(Path::userPath, std::ios::out);
-    std::ofstream meetings_ifs(Path::meetingPath, std::ios::out);
+    ofstream users_ifs(Path::userPath, ios::out);
+    ofstream meetings_ifs(Path::meetingPath, ios::out);
     for (User &each : m_userList) {
         users_ifs << generate_csv_line({each.getName(), each.getPassword(),
                                         each.getEmail(), each.getPhone()})
-                  << std::endl;
+                  << endl;
     }
     for (Meeting &each : m_meetingList) {
         auto participatorlist = each.getParticipator();
@@ -165,7 +167,7 @@ bool Storage::writeToFile(void) {
                              vectorToString(participatorlist),
                              Date::dateToString(each.getStartDate()),
                              Date::dateToString(each.getEndDate()),
-                             each.getTitle()}) << std::endl;
+                             each.getTitle()}) << endl;
     }
     meetings_ifs.close();
     users_ifs.close();
@@ -177,9 +179,9 @@ bool Storage::writeToFile(void) {
 * get Instance of storage
 * @return the pointer of the instance
 */
-std::shared_ptr<Storage> Storage::getInstance(void) {
+shared_ptr<Storage> Storage::getInstance(void) {
     if (m_instance == nullptr) {
-        m_instance = std::shared_ptr<Storage>(new Storage);
+        m_instance = shared_ptr<Storage>(new Storage);
     }
     return m_instance;
 }
@@ -188,7 +190,7 @@ std::shared_ptr<Storage> Storage::getInstance(void) {
 *   destructor
 */
 Storage::~Storage() {
-    // std::cout << "delete storage" << std::endl;
+    // cout << "delete storage" << endl;
     if (this->m_dirty) {
         this->writeToFile();
     }
@@ -204,6 +206,7 @@ Storage::~Storage() {
 void Storage::createUser(const User &t_user) {
     m_userList.push_back(t_user);
     m_dirty = true;
+    this->sync();
 }
 
 /**
@@ -211,9 +214,9 @@ void Storage::createUser(const User &t_user) {
 * @param a lambda function as the filter
 * @return a list of fitted users
 */
-std::list<User> Storage::queryUser(
-    std::function<bool(const User &)> filter) const {
-    std::list<User> fitted_users;
+list<User> Storage::queryUser(
+    function<bool(const User &)> filter) const {
+    list<User> fitted_users;
     for (auto &each : m_userList) {
         if (filter(each)) {
             fitted_users.push_back(each);
@@ -228,14 +231,15 @@ std::list<User> Storage::queryUser(
 * @param a lambda function as the method to update the user
 * @return the number of updated users
 */
-int Storage::updateUser(std::function<bool(const User &)> filter,
-                        std::function<void(User &)> switcher) {
+int Storage::updateUser(function<bool(const User &)> filter,
+                        function<void(User &)> switcher) {
     int updated_count = 0;
     for (auto &each : m_userList) {
         if (filter(each)) {
             switcher(each);
             updated_count++;
             m_dirty = true;
+            this->sync();
         }
     }
     return updated_count;
@@ -246,13 +250,14 @@ int Storage::updateUser(std::function<bool(const User &)> filter,
 * @param a lambda function as the filter
 * @return the number of deleted users
 */
-int Storage::deleteUser(std::function<bool(const User &)> filter) {
+int Storage::deleteUser(function<bool(const User &)> filter) {
     int deleted_count = 0;
     for (auto it = m_userList.begin(); it != m_userList.end();) {
         if (filter(*it)) {
             it = m_userList.erase(it);
             deleted_count++;
             m_dirty = true;
+            this->sync();
         } else {
             it++;
         }
@@ -267,6 +272,7 @@ int Storage::deleteUser(std::function<bool(const User &)> filter) {
 void Storage::createMeeting(const Meeting &t_meeting) {
     m_meetingList.push_back(t_meeting);
     m_dirty = true;
+    this->sync();
 }
 
 /**
@@ -274,9 +280,9 @@ void Storage::createMeeting(const Meeting &t_meeting) {
 * @param a lambda function as the filter
 * @return a list of fitted meetings
 */
-std::list<Meeting> Storage::queryMeeting(
-    std::function<bool(const Meeting &)> filter) const {
-    std::list<Meeting> fitted_meetings;
+list<Meeting> Storage::queryMeeting(
+    function<bool(const Meeting &)> filter) const {
+    list<Meeting> fitted_meetings;
     for (auto &each : m_meetingList) {
         if (filter(each)) {
             fitted_meetings.push_back(each);
@@ -291,14 +297,15 @@ std::list<Meeting> Storage::queryMeeting(
 * @param a lambda function as the method to update the meeting
 * @return the number of updated meetings
 */
-int Storage::updateMeeting(std::function<bool(const Meeting &)> filter,
-                           std::function<void(Meeting &)> switcher) {
+int Storage::updateMeeting(function<bool(const Meeting &)> filter,
+                           function<void(Meeting &)> switcher) {
     int updated_count = 0;
     for (auto &each : m_meetingList) {
         if (filter(each)) {
             switcher(each);
             updated_count++;
             m_dirty = true;
+            this->sync();
         }
     }
     return updated_count;
@@ -309,14 +316,16 @@ int Storage::updateMeeting(std::function<bool(const Meeting &)> filter,
 * @param a lambda function as the filter
 * @return the number of deleted meetings
 */
-int Storage::deleteMeeting(std::function<bool(const Meeting &)> filter) {
+int Storage::deleteMeeting(function<bool(const Meeting &)> filter) {
     int deleted_count = 0;
     for (auto it = m_meetingList.begin(); it != m_meetingList.end();) {
         if (filter(*it)) {
             it = m_meetingList.erase(it);
             deleted_count++;
             m_dirty = true;
-        } else {
+            this->sync();
+        } 
+        else {
             it++;
         }
     }
@@ -327,6 +336,5 @@ int Storage::deleteMeeting(std::function<bool(const Meeting &)> filter) {
 * sync with the file
 */
 bool Storage::sync(void) {
-    // m_dirty = false;
     return writeToFile();
 }

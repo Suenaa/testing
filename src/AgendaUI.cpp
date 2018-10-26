@@ -38,7 +38,8 @@ void AgendaUI::OperationLoop(void) {
 			cout << "lap - list all participate meetings" << endl;
 			cout << "qm  - query meeting by title" << endl;
 			cout << "qt  - query meeting by time interval" << endl;
-			cout << "da  - delete meeting by title" << endl;
+			cout << "dm  - delete meeting by title" << endl;
+			cout << "da  - delete all meetings" << endl;
 		}
 		for (int i = 0; i < 54; i++)
 			cout << "-";
@@ -235,7 +236,8 @@ void AgendaUI::createMeeting() {
     cin >> title >> sTime >> eTime;
     if (m_agendaService.createMeeting(m_userName, title, sTime, eTime, l)) {
         cout << "[create meeting] succeed!" << endl;
-    } else {
+    } 
+    else {
         cout << "[create meeting] error!" << endl;
     }
     cout << endl;

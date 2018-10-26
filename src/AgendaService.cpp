@@ -85,65 +85,104 @@ list<User> AgendaService::listAllUsers(void) const {
 
 bool AgendaService::createMeeting(const string userName, const string title,
 	const string startDate, const string endDate, const vector<string> participator) {
-	if (!(Date::isValid(Date::stringToDate(startDate)) &&
-		Date::isValid(Date::stringToDate(endDate))))
+	Date start;
+	Date end;
+	start = Date::stringToDate(startDate);
+	end = Date::stringToDate(endDate);
+	if(!Date::isValid(start)) {
 		return false;
-	Date start(startDate);
-	Date end(endDate);
-	if (start >= end)
-		return false;
-	Meeting temp(userName, participator, start, end, title);
-	if (participator.size() <= 0)
-		return false;
-	auto filter = [userName](const User& it) {
-		return userName == it.getName();
-	};
-	if ((m_storage->queryUser(filter)).size() <= 0)
-		return false;
-	for (auto i = participator.begin(); i != participator.end(); i++) {
-		list<User> t_user = m_storage->queryUser([&] (const User& it) {
-				return *i == it.getName();
-			});
-		if (t_user.size() == 0)
-			return false;
-		if (t_user.size() < participator.size())
-			return false;
 	}
-	for (auto i = participator.begin(); i != participator.end(); i++) {
-		if (userName == *i)
-			return false;
+	if(!Date::isValid(end)) {
+		return false;
 	}
-	list <Meeting> result;
-	result = m_storage->queryMeeting([&] (const Meeting& it) {
-		if (userName == it.getSponsor() || it.isParticipator(userName)) {
-			if(end > it.getStartDate() && it.getEndDate() > start)
-				return true;
-			else
-				return false;
+	if (start >= end) {
+		return false;
+	}
+	if (participator.empty())
+		return false;
+	list<User> t_user;
+	list<Meeting> t_meeting;
+	// check participators
+	for (auto it = participator.begin(); it != participator.end(); it++) {
+		if (*it == userName) {
+			return false;
 		}
-		else
+		string participant = *it;
+		t_user = m_storage->queryUser([&participant] (const User& a) {
+			if (a.getName() == participant) {
+				return true;
+			}
+			else {
+				return false;
+			}
+		});
+		if (t_user.empty()) {
 			return false;
-	});
-	if (result.size() > 0)
-		return false;
-	for (auto i = participator.begin(); i != participator.end(); i++) {
-		list<Meeting> result2 = m_storage->queryMeeting([&] 
-			(const Meeting & it) {
-				if (*i == it.getSponsor() || it.isParticipator(*i)) { 
-					if (end > it.getStartDate() && start < it.getEndDate()) 
-						return true;
+		}
+		t_meeting = m_storage->queryMeeting([&participant, &start, &end] (const Meeting& a) {
+			if (a.getSponsor() == participant || a.isParticipator(participant)) {
+				if (a.getStartDate() <= start && a.getEndDate() > start) {
+					return true;
 				}
-				else
-					return false;
-			});
-		if (result2.size() > 0)
+				if (a.getStartDate() < end && a.getEndDate() >= end) {
+					return true;
+				}
+				if (a.getStartDate() >= start && a.getEndDate() <= end) {
+					return true;
+				}
+			}
+			else {
+				return false;
+			}
+		});
+		if (!t_meeting.empty()) {
 			return false;
+		}
 	}
-	auto ifTitle = [&](const Meeting& it) {
-		return title == it.getTitle();
-	};
-	if (m_storage->queryMeeting(ifTitle).size() > 0)
+	// check sponsor
+	t_user = m_storage->queryUser([&](const User& a) {
+		if (a.getName() == userName) {
+			return true;
+		}
+		else {
+			return false;
+		}
+	});
+	if (t_user.empty()) {
 		return false;
+	}
+	t_meeting = m_storage->queryMeeting([&userName, &start, &end] (const Meeting& a) {
+		if (a.getSponsor() == userName || a.isParticipator(userName)) {
+			if (a.getStartDate() <= start && a.getEndDate() > start) {
+				return true;
+			}
+			if (a.getStartDate() < end && a.getEndDate() >= end) {
+				return true;
+			}
+			if (a.getStartDate() >= start && a.getEndDate() <= end) {
+				return true;
+			}
+		}
+		else {
+			return false;
+		}
+	});
+	if (!t_meeting.empty()) {
+		return false;
+	}
+	// check title
+	t_meeting = m_storage->queryMeeting([&](const Meeting& a) {
+		if (a.getTitle() == title) {
+			return true;
+		}
+		else {
+			return false;
+		}
+	});
+	if (!t_meeting.empty()) {
+		return false;
+	}
+	Meeting temp(userName, participator, start, end, title);
 	m_storage->createMeeting(temp);
 	return true;
 }
@@ -162,11 +201,29 @@ list<Meeting> AgendaService::meetingQuery(const string userName, string title) c
 
 list<Meeting> AgendaService::meetingQuery(const string userName, const string startDate, const string endDate) const {
 	Date start = Date::stringToDate(startDate), end = Date::stringToDate(endDate);
+	if (!Date::isValid(start)) {
+		list<Meeting> t_meeting;
+		return t_meeting;
+	}
+	if (!Date::isValid(end)) {
+		list<Meeting> t_meeting;
+		return t_meeting;
+	}
 	auto filter = [&] (const Meeting& it) {
-		if ((userName == it.getSponsor() || it.isParticipator(userName)) && !(end < it.getStartDate() || start > it.getEndDate()))
-			return true;
-		else
+		if (userName == it.getSponsor() || it.isParticipator(userName)) {
+			if (it.getStartDate() <= start && it.getEndDate() >= start) {
+				return true;
+			}
+			if (it.getStartDate() <= end && it.getEndDate() >= end) {
+				return true;
+			}
+			if (it.getStartDate() >= start && it.getEndDate() <= end) {
+				return true;
+			}
+		}
+		else {
 			return false;
+		}
 	};
 	return m_storage->queryMeeting(filter);
 }
